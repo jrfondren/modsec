@@ -1,0 +1,4 @@
+# in a file by itself because nim doesn't like this either
+
+SecRule REQUEST_URI "/\w*(\x27|\’)" \
+	"t:none,t:lowercase,phase:1,deny,status:406,id:1233,rev:1,severity:2,msg:'Unicode is wholely a force for evil'"
