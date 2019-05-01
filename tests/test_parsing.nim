@@ -1,6 +1,5 @@
 import unittest
 import modsec / [rules, actions]
-
 proc parseEq(str: string, rules: seq[Modsec]): bool =
   try:
     result = parseRules(str) == rules
@@ -58,6 +57,16 @@ suite "parsing action oddities from real-world rulesets":
 
 # ----------------------------------------------------------------------
 suite "parsing normal ModSec rules":
+  test "file with Apache Includes":
+    check """
+Include /etc/apache2/conf.d/modsecurity.d/exceptions.conf
+Include /etc/apache2/conf.d/modsecurity.d/general_rules.conf
+Include /etc/apache2/conf.d/modsecurity.d/antibrute.conf
+""".parseEq(@[
+      ModSec(kind: HttpInclude, path: "/etc/apache2/conf.d/modsecurity.d/exceptions.conf"),
+      ModSec(kind: HttpInclude, path: "/etc/apache2/conf.d/modsecurity.d/general_rules.conf"),
+      ModSec(kind: HttpInclude, path: "/etc/apache2/conf.d/modsecurity.d/antibrute.conf"),
+    ])
 
   test "rule with escaped quote in string":
     check """
