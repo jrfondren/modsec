@@ -7,6 +7,7 @@ type
     SecRule,
     SecRuleRemoveById, SecMarker, SecAction, SecDefaultAction,
     SecRuleUpdateTargetById,
+    HttpInclude,
     SecUnparsed
   SecIdRange* = HSlice[int, int]
   SecRuleObj* = object
@@ -23,6 +24,7 @@ type
       updatedId*: SecIdRange
       variables*: string
       replacements*: string  # empty string on no replacements
+    of HttpInclude: path*: string
     of SecUnparsed: unparsed*: string
 
 proc `==`*(a, b: Modsec): bool =
@@ -36,6 +38,7 @@ proc `==`*(a, b: Modsec): bool =
     a.updatedId == b.updatedId and
         a.variables == b.variables and
         a.replacements == b.replacements
+  of HttpInclude: a.path == b.path
   of SecUnparsed: a.unparsed == b.unparsed
 
 proc `$`*(rule: SecRuleObj): string =
@@ -68,8 +71,21 @@ proc `$`*(rule: Modsec): string =
     result.add " " & rule.variables
     if rule.replacements.len > 0:
       result.add " " & rule.replacements
+  of HttpInclude:
+    result.add &"Include {rule.path}"
   of SecUnparsed:
     result = rule.unparsed
+
+iterator pairs*(ab: tuple[a: seq[Action], b: seq[Action]]): tuple[a: Action, b: Action] =
+  let (a, b) = ab
+  for i in 0 .. a.high:
+    yield (a[i], b[i])
+
+proc getActions*(rule: ModSec): seq[Action] =
+  case rule.kind
+  of SecRule: result = rule.rules[0].actions
+  of SecAction, SecDefaultAction: result = rule.actions
+  else: assert(false)
 
 proc getActions*(rule: ModSec, kind: Actions): seq[Action] =
   template scan(list: untyped) {.dirty.} =
@@ -94,7 +110,8 @@ proc parseRules*(str: string): seq[Modsec] =
     emptyline <- comment | *Blank * '\n' | *Blank * '\\' * *Blank * '\n' * (comment | *Blank * '\n')
     spacing <- +(*Blank * '\\' * *Blank * '\n' * *Blank) | +Blank
     rule <- RSecRule | RSecRuleRemoveById | RSecMarker | RSecAction |
-            RSecDefaultAction | RSecRuleUpdateTargetById | RSecUnparsed
+            RSecDefaultAction | RSecRuleUpdateTargetById | RHttpInclude |
+            RSecUnparsed
 
     RSecRule <- i"SecRule" * spacing * >maybeQuoted * spacing * >maybeQuoted * ?(*spacing * >maybeQuoted):
       let actions: seq[Action] =
@@ -140,6 +157,9 @@ proc parseRules*(str: string): seq[Modsec] =
       results.add(Modsec(kind: SecAction, actions: parseActions(dequote($1))))
     RSecDefaultAction <- i"SecDefaultAction" * spacing * >maybeQuoted:
       results.add(Modsec(kind: SecDefaultAction, actions: parseActions(dequote($1))))
+
+    RHttpInclude <- i"Include" * spacing * >maybeQuoted:
+      results.add(Modsec(kind: HttpInclude, path: $1))
 
     RSecUnparsed <- >(addoutputfilter | argsep | boolupdate | filemode | seccomponent | outputsed | location_open | location_close | directory_open | directory_close | ifmodule_open | ifmodule_close | randhtml):
       results.add(Modsec(kind: SecUnparsed, unparsed: $1))

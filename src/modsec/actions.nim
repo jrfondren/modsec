@@ -59,6 +59,56 @@ proc `==`*(a, b: Action): bool =
   of Status: a.status == b.status
   of Transform: a.t == b.t
 
+proc actionOf*(act, val: string): Action =
+  let kind = parseEnum[Actions](capitalizeAscii(act))
+  case kind
+  of Accuracy: Action(kind: Accuracy, acc: val.parseInt)
+  of Maturity: Action(kind: Maturity, maturity: val.parseInt)
+  of Id: Action(kind: Id, id: val.parseInt)
+  of Phase: Action(kind: Phase, phase: val.parseInt)
+  of Severity: Action(kind: Severity, severity: val)
+  of Auditlog, Log: Action(kind: Auditlog, enabled: val.parseBool)
+  of Skip: Action(kind: Skip, skip: val.parseInt)
+  of SkipAfter: Action(kind: SkipAfter, marker: val)
+  of Pause: Action(kind: Pause, ms: val.parseInt)
+  of Status: Action(kind: Status, status: val.parseInt)
+  of Transform: Action(kind: Transform, t: parseEnum[Transforms](capitalizeAscii(val)))
+  # pain incoming, see Nim-lang/Nim#11143
+  of Allow: Action(kind: Allow)
+  of Block: Action(kind: Block)
+  of Capture: Action(kind: Capture)
+  of Chain: Action(kind: Chain)
+  of Deny: Action(kind: Deny)
+  of Drop: Action(kind: Drop)
+  of MultiMatch: Action(kind: MultiMatch)
+  of Pass: Action(kind: Pass)
+  # pain continued
+  of Append: Action(kind: Append, unparsed: val)
+  of Ctl: Action(kind: Ctl, unparsed: val)
+  of Deprecatevar: Action(kind: Deprecatevar, unparsed: val)
+  of Exec: Action(kind: Exec, unparsed: val)
+  of Expirevar: Action(kind: Expirevar, unparsed: val)
+  of Initcol: Action(kind: Initcol, unparsed: val)
+  of Msg: Action(kind: Msg, unparsed: val)
+  of Prepend: Action(kind: Prepend, unparsed: val)
+  of Logdata: Action(kind: Logdata, unparsed: val)
+  of Proxy: Action(kind: Proxy, unparsed: val)
+  of Rev: Action(kind: Rev, unparsed: val)
+  of Redirect: Action(kind: Redirect, unparsed: val)
+  of SanitiseArg: Action(kind: SanitiseArg, unparsed: val)
+  of SanitiseMatched: Action(kind: SanitiseMatched, unparsed: val)
+  of SanitiseMatchedBytes: Action(kind: SanitiseMatchedBytes, unparsed: val)
+  of SanitiseRequestHeader: Action(kind: SanitiseRequestHeader, unparsed: val)
+  of SanitiseResponseHeader: Action(kind: SanitiseResponseHeader, unparsed: val)
+  of Setuid: Action(kind: Setuid, unparsed: val)
+  of Setrsc: Action(kind: Setrsc, unparsed: val)
+  of Setsid: Action(kind: Setsid, unparsed: val)
+  of Setenv: Action(kind: Setenv, unparsed: val)
+  of Setvar: Action(kind: Setvar, unparsed: val)
+  of Tag: Action(kind: Tag, unparsed: val)
+  of Ver: Action(kind: Ver, unparsed: val)
+  of Xmlns: Action(kind: Xmlns, unparsed: val)
+
 proc parseActions*(str: string): seq[Action] =
   var results: seq[Action]
 

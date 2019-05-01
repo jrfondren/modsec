@@ -13,6 +13,12 @@ type
     ReferBadId, InvalidId, DuplicateIdsInChain, MultiplyDisruptive,
     ChainWithoutId
 
+iterator pairs*(ab: (Ruleset, Ruleset)): (Modsec, Modsec) =
+  let (a, b) = (ab[0].rules, ab[1].rules)
+  assert a.len == b.len
+  for i in 0 ..< a.len:
+    yield (a[i], b[i])
+
 proc initRuleset*: Ruleset =
   result.files = initTable[string, HashSet[int]]()
   result.ids = initTable[int, int]()
@@ -38,6 +44,13 @@ proc addRules*(ruleset: var Ruleset, str: string) =
 proc addConfFile*(ruleset: var Ruleset, filename: string) =
   for rule in parseRules(readFile(filename)):
     ruleset.addRule rule, filename
+
+proc recursiveAddConfFile*(ruleset: var Ruleset, filename: string) =
+  for rule in parseRules(readFile(filename)):
+    if rule.kind == HttpInclude:
+      recursiveAddConfFile(ruleset, rule.path)
+    else:
+      ruleset.addRule rule, filename
 
 proc addConfDir*(ruleset: var Ruleset, dir: string) =
   for file in walkFiles(dir / "*.conf"):
@@ -130,7 +143,7 @@ proc validate*(ruleset: seq[Modsec]): set[Malformations] =
     of SecRuleUpdateTargetById:
       for id in rule.updatedId:
         expecting.incl id
-    of SecUnparsed: discard
+    of HttpInclude, SecUnparsed: discard
   if skip > 0: error(SkipNothing)
 
   if card(seenMarkers - expectMarkers) > 0:
