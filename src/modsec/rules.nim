@@ -41,8 +41,17 @@ proc `==`*(a, b: Modsec): bool =
   of HttpInclude: a.path == b.path
   of SecUnparsed: a.unparsed == b.unparsed
 
-proc `$`*(rule: SecRuleObj): string =
-  &"SecRule {rule.variables} {rule.operator} {rule.actions}"
+func maybeQuote(str: string): string =
+  if ' ' in str:
+    '"' & str & '"'
+  else:
+    str
+
+func `$`*(rule: SecRuleObj): string =
+  let actions =
+    if rule.actions.len > 0: ' ' & $rule.actions
+    else: ""
+  &"SecRule {rule.variables.maybeQuote} \"{rule.operator}\"{actions}"
 
 proc idRangeToString(id: SecIdRange): string =
   if id.a == id.b:

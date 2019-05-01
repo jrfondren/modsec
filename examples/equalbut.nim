@@ -1,4 +1,4 @@
-import os, strformat, tables, strutils
+import os, strformat, tables, strutils, terminal
 import modsec
 import modsec / [rules, actions]
 
@@ -11,6 +11,27 @@ type
 
 var
   fromStats, toStats, diffStats: Stats
+  useColors: bool
+
+proc vivid(rule: Modsec) =
+  const
+    white = "\e[37;1m"
+    yellow = "\e[33;1m"
+    green = "\e[32;1m"
+    cyan = "\e[36;1m"
+    reset = ansiResetCode
+  if useColors and rule.kind == SecRule:
+    for i in 0 ..< rule.rules.len:
+      let
+        prefix = (if i > 0: "  " else: "")
+        vars = $rule.rules[i].variables
+        ops = $rule.rules[i].operator
+        acts = $rule.rules[i].actions
+      echo &"{prefix}{white}SecRule {yellow}{vars} {green}{ops} {cyan}{acts}{reset}"
+    if rule.rules.len > 1:
+      echo()
+  else:
+    echo $rule
 
 proc dumpTotals =
   template dumpTable(header: typed; fromTbl, toTbl: typed; index: typed): untyped =
@@ -83,7 +104,7 @@ proc grep(ruleset: Ruleset, actkind: Actions) =
       block checkrule:
         for a in r.getActions:
           if a.kind == actkind:
-            echo r
+            vivid r
             break checkrule
 
 proc usage {.noreturn.} =
@@ -135,4 +156,5 @@ proc main =
   else: usage()
 
 if isMainModule:
+  if stdout.isatty: useColors = true
   main()
