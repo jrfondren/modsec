@@ -1,4 +1,4 @@
-import os, strformat, tables, strutils, terminal
+import os, strformat, tables, strutils, terminal, algorithm
 import modsec
 import modsec / [rules, actions]
 
@@ -107,6 +107,39 @@ proc grep(ruleset: Ruleset, actkind: Actions) =
             vivid r
             break checkrule
 
+proc equalbut(a, b: Modsec; but: set[Actions]): bool =
+  proc filter(acts: seq[Action]): seq[Action] =
+    for act in acts:
+      if act.kind notin but:
+        result.add act
+  let
+    actsA = a.getActions.filter
+    actsB = b.getActions.filter
+  if actsA.len != actsB.len: return false
+  for x, y in (actsA, actsB):
+    if x != y: return false
+  return true
+
+proc rulesovertime(sets: seq[Ruleset]) =
+  var
+    versions = initTable[int, string]()
+    last = initTable[int, Modsec]()
+  for rs in sets:
+    for rule in rs.rules:
+      if rule.kind in {SecRule, SecAction}:
+        let id = rule.getActions(Actions.Id)[^1].id
+        if id in versions and not last[id].equalbut(rule, {Msg,Status}):
+          versions[id] = rs.version
+          last[id] = rule
+        elif id notin versions:
+          versions[id] = rs.version
+          last[id] = rule
+  var ids: seq[int]
+  for id in versions.keys: ids.add id
+  sort(ids, system.cmp[int])
+  for id in ids:
+    echo &"{id}: {versions[id]}"
+
 proc usage {.noreturn.} =
   stderr.writeLine &"""
 usage: {paramStr(0)} confirmdiff <Action> <from> <to> <file1> <file2>
@@ -124,6 +157,13 @@ usage: {paramStr(0)} act <Action> [!][<val>] <file>
 Report where rules have <Action>. If <val> is provided, report where the Action
 is present and equal to <val>.  If !<val> is provided, repport where the Action
 is present and unequal to <val>.
+
+usage: {paramStr(0)} rulesovertime <version1> <file1> <version2> <file2> [<version3> <file3> ...]
+
+Load rulesets from each file in turn and then dump a ruleid:version table,
+showing the age of each rule. If an ID changes substantially from version1 to
+version2, for example, then in output it'll have version2, unless it changes
+substantially again. Hack: differences in Status and Msg actions are ignored.
 """
   quit 1
 
@@ -153,6 +193,14 @@ proc main =
       ruleset = initRuleset()
     ruleset.recursiveAddConfFile(paramStr(paramCount()))
     ruleset.grep(actkind)
+  elif paramCount() > 5 and paramStr(1) == "rulesovertime":
+    var sets: seq[Ruleset]
+    for i in countup(2, paramCount(), 2):
+      var ruleset = initRuleset()
+      ruleset.version = paramStr(i)
+      ruleset.recursiveAddConfFile(paramStr(i+1))
+      sets.add ruleset
+    rulesovertime(sets)
   else: usage()
 
 if isMainModule:
