@@ -10,8 +10,9 @@ type
     ids: Table[int, int] # ruleid -> index into rules
   Malformations* = enum
     DuplicateIds, BrokenChain, OrphanLabel, SkipToNowhere, SkipNothing,
-    ReferBadId, InvalidId, DuplicateIdsInChain, MultiplyDisruptive,
-    ChainWithoutId
+    ReferBadId, InvalidId, DuplicateIdsInChain, InvalidSubruleActions,
+    ChainWithoutId, RedundantActions, OverriddenActions,
+    MultiplyDisruptive
 
 iterator pairs*(ab: (Ruleset, Ruleset)): (Modsec, Modsec) =
   let (a, b) = (ab[0].rules, ab[1].rules)
@@ -63,6 +64,51 @@ func getRulesById*(ruleset: Ruleset, id: int): seq[Modsec] =
       let this = rule.getActions(Actions.Id)[^1].id
       if this == id: result.add rule
     else: discard
+
+proc validatePrimaryActions(acts: seq[Action]): set[Malformations] =
+  var
+    counts: array[Actions, int]
+    disrupts: set[Actions]
+  for act in acts:
+    if act.kind in {Allow,Block,Deny,Drop}:
+      if disrupts.card > 0 and act.kind notin disrupts:
+        result.incl OverriddenActions
+      disrupts.incl act.kind
+    if act.kind notin {Transform, Initcol}:
+      inc counts[act.kind]
+      if counts[act.kind] > 1:
+        result.incl RedundantActions
+
+proc validateSubruleActions(acts: seq[Action]): set[Malformations] =
+  var chains: int
+  for act in acts:
+    if act.kind notin {Transform, Chain, MultiMatch, Capture,
+                       Setvar, Deprecatevar, Expirevar, Initcol, Ctl}:
+      result.incl InvalidSubruleActions
+    if act.kind == Chain:
+      inc chains
+      if chains > 1:
+        result.incl RedundantActions
+
+proc validate*(ruleset: var Ruleset, rule: Modsec): set[Malformations] =
+  if rule.kind notin {SecRule, SecAction, SecDefaultAction}: return
+
+  let ids = rule.getActions(Actions.Id)
+  if ids.len > 0:
+    if ids[^1].id in ruleset.ids:
+      result.incl DuplicateIds
+  if ids.len > 1:
+    result.incl DuplicateIdsInChain
+
+  result.incl validatePrimaryActions(getActions(rule))
+  if rule.kind == SecRule and len(rule.rules) > 1:
+    for subrule in rule.rules[1 .. ^1]:
+      result.incl validateSubruleActions(subrule.actions)
+    for notlast in rule.rules[0 .. ^2]:
+      if getActions(notlast.actions, Chain).len == 0:
+        result.incl BrokenChain
+    if getActions(rule.rules[^1].actions, Chain).len > 0:
+      result.incl BrokenChain
 
 proc validate*(ruleset: seq[Modsec]): set[Malformations] =
   var
