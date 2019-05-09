@@ -38,35 +38,35 @@ type
     of Status: status*: int
     of Transform: t*: Transforms
 
+when not defined(debugPrettyModsec):
+  func `$`*(act: Action): string =
+    func maybeQuote(str: string): string =
+      if {' ', ','} in str:
+        '\'' & str & '\''
+      else:
+        str
+    template `-->`(str: typed, field: untyped): untyped =
+      str & ':' & maybeQuote($field)
 
-func `$`*(act: Action): string =
-  func maybeQuote(str: string): string =
-    if {' ', ','} in str:
-      '\'' & str & '\''
-    else:
-      str
-  template `-->`(str: typed, field: untyped): untyped =
-    str & ':' & maybeQuote($field)
-
-  case act.kind
-  of Accuracy: "accuracy" --> act.acc
-  of Maturity: "maturity" --> act.maturity
-  of Id: "id" --> act.id
-  of Phase: "phase" --> act.phase
-  of Severity: "severity" --> act.severity
-  of AuditLog: (if act.enabled: "auditlog" else: "noauditlog")
-  of Log: (if act.enabled: "log" else: "nolog")
-  of Allow, Block, Capture, Chain, Deny, Drop, MultiMatch, Pass: toLowerAscii($act.kind)
-  of Append, Ctl, Deprecatevar, Exec, Expirevar, Initcol, Msg, Prepend,
-     Logdata, Proxy, Rev, Redirect, SanitiseArg, SanitiseMatched,
-     SanitiseMatchedBytes, SanitiseRequestHeader, SanitiseResponseHeader,
-     Setuid, Setrsc, Setsid, Setenv, Setvar, Tag, Ver, Xmlns:
-       act.unparsed
-  of Skip: "skip" --> act.skip
-  of SkipAfter: "skipAfter" --> act.marker
-  of Pause: "pause" --> act.ms
-  of Status: "status" --> act.status
-  of Transform: "t" --> toLowerAscii($act.t)
+    case act.kind
+    of Accuracy: "accuracy" --> act.acc
+    of Maturity: "maturity" --> act.maturity
+    of Id: "id" --> act.id
+    of Phase: "phase" --> act.phase
+    of Severity: "severity" --> act.severity
+    of AuditLog: (if act.enabled: "auditlog" else: "noauditlog")
+    of Log: (if act.enabled: "log" else: "nolog")
+    of Allow, Block, Capture, Chain, Deny, Drop, MultiMatch, Pass: toLowerAscii($act.kind)
+    of Append, Ctl, Deprecatevar, Exec, Expirevar, Initcol, Msg, Prepend,
+       Logdata, Proxy, Rev, Redirect, SanitiseArg, SanitiseMatched,
+       SanitiseMatchedBytes, SanitiseRequestHeader, SanitiseResponseHeader,
+       Setuid, Setrsc, Setsid, Setenv, Setvar, Tag, Ver, Xmlns:
+         toLowerAscii($act.kind) & ":'" & act.unparsed & "'"
+    of Skip: "skip" --> act.skip
+    of SkipAfter: "skipAfter" --> act.marker
+    of Pause: "pause" --> act.ms
+    of Status: "status" --> act.status
+    of Transform: "t" --> toLowerAscii($act.t)
 
 proc `==`*(a, b: Action): bool =
   if a.kind != b.kind: return false
@@ -89,8 +89,9 @@ proc `==`*(a, b: Action): bool =
   of Status: a.status == b.status
   of Transform: a.t == b.t
 
-func `$`*(acts: seq[Action]): string =
-  '"' & acts.join(",") & '"'
+when not defined(debugPrettyModsec):
+  func `$`*(acts: seq[Action]): string =
+    '"' & acts.join(",") & '"'
 
 proc actionOf*(act, val: string): Action =
   let kind = parseEnum[Actions](capitalizeAscii(act))

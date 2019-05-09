@@ -47,11 +47,12 @@ func maybeQuote(str: string): string =
   else:
     str
 
-func `$`*(rule: SecRuleObj): string =
-  let actions =
-    if rule.actions.len > 0: ' ' & $rule.actions
-    else: ""
-  &"SecRule {rule.variables.maybeQuote} \"{rule.operator}\"{actions}"
+when not defined(debugPrettyModsec):
+  func `$`*(rule: SecRuleObj): string =
+    let actions =
+      if rule.actions.len > 0: ' ' & $rule.actions
+      else: ""
+    &"SecRule {rule.variables.maybeQuote} \"{rule.operator}\"{actions}"
 
 proc idRangeToString(id: SecIdRange): string =
   if id.a == id.b:
@@ -59,31 +60,32 @@ proc idRangeToString(id: SecIdRange): string =
   else:
     result.add &"{id.a}-{id.b}"
 
-proc `$`*(rule: Modsec): string =
-  case rule.kind
-  of SecRule:
-    for r in rule.rules:
-      if result.len > 0: result.add "\n"
-      result.add $r
-  of SecRuleRemoveById:
-    result = "SecRuleRemoveById"
-    for id in rule.removedIds:
-      result.add " " & idRangeToString(id)
-  of SecMarker:
-    result = "SecMarker " & rule.marker
-  of SecAction:
-    result = &"SecAction {rule.actions}"
-  of SecDefaultAction:
-    result = &"SecDefaultAction {rule.actions}"
-  of SecRuleUpdateTargetById:
-    result = "SecRuleUpdateTargetById " & idRangeToString(rule.updatedId)
-    result.add " " & rule.variables
-    if rule.replacements.len > 0:
-      result.add " " & rule.replacements
-  of HttpInclude:
-    result.add &"Include {rule.path}"
-  of SecUnparsed:
-    result = rule.unparsed
+when not defined(debugPrettyModsec):
+  proc `$`*(rule: Modsec): string =
+    case rule.kind
+    of SecRule:
+      for r in rule.rules:
+        if result.len > 0: result.add "\n"
+        result.add $r
+    of SecRuleRemoveById:
+      result = "SecRuleRemoveById"
+      for id in rule.removedIds:
+        result.add " " & idRangeToString(id)
+    of SecMarker:
+      result = "SecMarker " & rule.marker
+    of SecAction:
+      result = &"SecAction {rule.actions}"
+    of SecDefaultAction:
+      result = &"SecDefaultAction {rule.actions}"
+    of SecRuleUpdateTargetById:
+      result = "SecRuleUpdateTargetById " & idRangeToString(rule.updatedId)
+      result.add " " & rule.variables
+      if rule.replacements.len > 0:
+        result.add " " & rule.replacements
+    of HttpInclude:
+      result.add &"Include {rule.path}"
+    of SecUnparsed:
+      result = rule.unparsed
 
 iterator pairs*(ab: tuple[a: seq[Action], b: seq[Action]]): tuple[a: Action, b: Action] =
   let (a, b) = ab
@@ -105,6 +107,11 @@ proc getActions*(rule: ModSec, kind: Actions): seq[Action] =
   of SecRule: scan rule.rules[0].actions
   of SecAction, SecDefaultAction: scan rule.actions
   else: assert(false)
+
+proc getActions*(acts: seq[Action], kind: Actions): seq[Action] =
+  for act in acts:
+    if act.kind == kind:
+      result.add act
 
 proc parseRules*(str: string): seq[Modsec] =
   var
