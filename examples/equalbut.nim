@@ -152,10 +152,10 @@ status:403 to status:404 in the new rules.
 
   {paramStr(0)} confirmdiff Status 403 404 rules.conf rules2.conf
 
-usage: {paramStr(0)} act <Action> [!][<val>] <file1> <file2>
+usage: {paramStr(0)} act <Action> [!][<val>] <file>
 
 Report where rules have <Action>. If <val> is provided, report where the Action
-is present and equal to <val>.  If !<val> is provided, repport where the Action
+is present and equal to <val>.  If !<val> is provided, report where the Action
 is present and unequal to <val>.
 
 usage: {paramStr(0)} rulesovertime <version1> <file1> <version2> <file2> [<version3> <file3> ...]
