@@ -181,6 +181,7 @@ proc main =
     dumpDiffs()
     if diffs == 0: echo "No differences"
     else: echo &"There were {diffs} differences."
+    quit diffs != 0
   elif paramCount() == 4 and paramStr(1) == "act":
     var
       act = actionOf(paramStr(2), paramStr(3))
