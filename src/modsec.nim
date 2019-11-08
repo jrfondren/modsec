@@ -1,6 +1,5 @@
 import os, tables, sets
 import modsec / [base, rules, actions]
-import sugar
 
 type
   Ruleset* = object
@@ -35,7 +34,7 @@ proc addRule*(ruleset: var Ruleset, rule: Modsec, filename: string = "") =
   ruleset.rules.add rule
   if filename.len > 0:
     if filename notin ruleset.files:
-      ruleset.files[filename] = initSet[int]()
+      ruleset.files[filename] = initHashSet[int]()
     ruleset.files[filename].incl id
 
 proc addRules*(ruleset: var Ruleset, str: string) =
@@ -112,17 +111,17 @@ proc validate*(ruleset: var Ruleset, rule: Modsec): set[Malformations] =
 
 proc validate*(ruleset: seq[Modsec]): set[Malformations] =
   var
-    seen = initSet[int]()
-    expecting = initSet[int]()
-    seenMarkers = initSet[string]()
-    expectMarkers = initSet[string]()
+    seen = initHashSet[int]()
+    expecting = initHashSet[int]()
+    seenMarkers = initHashSet[string]()
+    expectMarkers = initHashSet[string]()
     errors: set[Malformations]
 
     id, chains, chainIndex, skip: int
     disruptions: set[Actions]
     ruleno = -1
   when defined(debugrules):
-    var complaints = initSet[(int, Malformations)]()
+    var complaints = initHashSet[(int, Malformations)]()
 
   proc error(err: Malformations) =
     when defined(debugrules):
