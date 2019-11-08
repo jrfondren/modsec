@@ -1,4 +1,4 @@
-import re, strutils, strformat, tables
+import strutils, strformat
 import npeg
 import actions, base
 
@@ -131,8 +131,8 @@ proc parseRules*(str: string): seq[Modsec] =
 
     RSecRule <- i"SecRule" * spacing * >maybeQuoted * spacing * >maybeQuoted * ?(*spacing * >maybeQuoted):
       let actions: seq[Action] =
-        if capture.len == 3:
-          parseActions(dequote($3))
+        if capture.len == 4:
+          parseActions(dequote(capture[3].s))
         else:
           @[]
       let rule = SecRuleObj(variables: dequote($1), operator: dequote($2), actions: actions)
@@ -149,8 +149,8 @@ proc parseRules*(str: string): seq[Modsec] =
     RSecRuleUpdateTargetById <- i"SecRuleUpdateTargetById" * spacing * (RuleIDRange | RuleID) *
                                 spacing * >maybeQuoted * ?(spacing * >maybeQuoted):
       let reps =
-        if capture.len == 2:
-          dequote($2)
+        if capture.len == 3:
+          dequote(capture[2].s)
         else:
           ""
       results.add(Modsec(kind: SecRuleUpdateTargetById,

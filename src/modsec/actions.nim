@@ -209,7 +209,7 @@ proc parseActions*(str: string): seq[Action] =
                          "setsid" | "setenv" | "setvar" | "tag" | "ver" |
                          "xmlns") *
                        ':' * ('\'' * >+QuotedInternal * '\'' | >+Internal):
-      let val = capture[^1]
+      let val = capture[^1].s
       case $1
       of "append": results.add(Action(kind: Append, unparsed: val))
       of "ctl": results.add(Action(kind: Ctl, unparsed: val))
